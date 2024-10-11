@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weirdcore 95 Visualizer</title>
+    <title>Evolutionary Weirdcore Visualizer</title>
     <style>
         body, html {
             margin: 0;
@@ -13,6 +13,8 @@
         }
         canvas {
             display: block;
+            width: 100vw;
+            height: 100vh;
         }
         #controls {
             position: absolute;
@@ -35,8 +37,8 @@
     <canvas id="glCanvas"></canvas>
     <div id="controls">
         <label>
-            Color Intensity: 
-            <input type="range" id="colorIntensity" min="0.5" max="2.0" step="0.1" value="1.0">
+            Fractal Intensity: 
+            <input type="range" id="fractalIntensity" min="0.5" max="2.0" step="0.1" value="1.0">
         </label>
     </div>
     <script>
@@ -57,11 +59,11 @@
         resizeCanvas();
 
         const vertexShaderSource = `
-            attribute vec2 a_position;
+            attribute vec4 a_position;
             varying vec2 v_uv;
             void main() {
-                v_uv = a_position * 0.5 + 0.5;
-                gl_Position = vec4(a_position, 0.0, 1.0);
+                v_uv = a_position.xy * 0.5 + 0.5;
+                gl_Position = a_position;
             }
         `;
         
@@ -70,11 +72,11 @@
             uniform float u_time;
             uniform vec2 u_resolution;
             uniform float u_audioData;
-            uniform float u_colorIntensity;
+            uniform float u_fractalIntensity;
             varying vec2 v_uv;
 
             float random(vec2 p) {
-                return fract(sin(p.x * 12.9898 + p.y * 78.233) * 43758.5453);
+                return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5453);
             }
 
             float noise(vec2 p) {
@@ -104,7 +106,7 @@
                 vec2 pos = (gl_FragCoord.xy / u_resolution.xy) * 2.0 - 1.0;
 
                 float audioEffect = u_audioData * 5.0;
-                float distortion = fbm(uv * u_colorIntensity + audioEffect) * 0.5;
+                float distortion = fbm(uv * u_fractalIntensity + audioEffect) * 0.5;
                 float glitch = step(0.9, random(uv * u_time * 2.0)) * 0.5;
 
                 vec3 color = vec3(distortion * 0.5 + glitch, distortion * 0.3, distortion * 0.8);
@@ -158,13 +160,13 @@
         const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
         const timeUniformLocation = gl.getUniformLocation(program, "u_time");
         const audioDataUniformLocation = gl.getUniformLocation(program, "u_audioData");
-        const colorIntensityUniformLocation = gl.getUniformLocation(program, "u_colorIntensity");
+        const fractalIntensityLocation = gl.getUniformLocation(program, "u_fractalIntensity");
 
         gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 
         let time = 0.0;
         let audioData = 0.0;
-        let colorIntensity = 1.0;
+        let fractalIntensity = 1.0;
         let analyser;
 
         async function setupAudio() {
@@ -193,15 +195,15 @@
 
         setupAudio();
 
-        document.getElementById("colorIntensity").addEventListener("input", (event) => {
-            colorIntensity = event.target.value;
+        document.getElementById("fractalIntensity").addEventListener("input", (event) => {
+            fractalIntensity = event.target.value;
         });
 
         function render() {
             time += 0.02;
             gl.uniform1f(timeUniformLocation, time);
             gl.uniform1f(audioDataUniformLocation, audioData);
-            gl.uniform1f(colorIntensityUniformLocation, colorIntensity);
+            gl.uniform1f(fractalIntensityLocation, fractalIntensity);
             
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
